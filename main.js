@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ------------------------------------------------------------------
 const auth = firebase.auth();
 const db = firebase.firestore();
-const adminEmails = ["chisano_togawa@dwango.co.jp", "8214tgwcsn@gmail.com"]; // ★★★【最重要】管理者のメアドをここに設定 ★★★
+const adminEmails = ["chisano_togawa@dwango.co.jp", "dw.hanyou@gmail.com"]; // ★★★【最重要】管理者のメアドをここに設定 ★★★
 
 
 // ------------------------------------------------------------------
@@ -228,12 +228,52 @@ function initializeAppConfig() {
     });
 
     deleteTourButton.addEventListener('click', async () => {
-        if (selectedTourId && confirm('このツアー設定を削除します。よろしいですか？（配布履歴は削除されません）')) {
-            try {
-                await db.collection('tours').doc(selectedTourId).delete();
-                alert('ツアーを削除しました。');
-                await loadTours(); displayTourDetails(null);
-            } catch (error) { alert('削除に失敗しました。'); }
+        if (!selectedTourId) return;
+
+        const tourToDelete = tours.find(t => t.id === selectedTourId);
+        if (!tourToDelete) return;
+
+        // ▼▼▼ ここからが修正箇所です ▼▼▼
+        const confirmation = prompt(`【警告】\n「${tourToDelete.tourName}」に関するすべてのデータ（設定、全配布履歴）が完全に削除されます。\n\nこの操作は元に戻せません。\n削除を実行するには、全削除パスワード「neuralizer」を入力してください：`);
+
+        if (confirmation !== "neuralizer") {
+            if (confirmation !== null) alert("パスワードが一致しません。削除はキャンセルされました。");
+            return;
+        }
+        // ▲▲▲ 修正ここまで ▲▲▲
+
+        try {
+            deleteTourButton.disabled = true;
+            deleteTourButton.textContent = "削除中...";
+
+            const tourRef = db.collection('tours').doc(selectedTourId);
+            const masterRef = tourRef.collection('master_distributions');
+            
+            const masterSnapshot = await masterRef.get();
+            const batch = db.batch();
+
+            masterSnapshot.forEach(doc => {
+                const data = doc.data();
+                batch.delete(doc.ref);
+                if (data.eventId && data.memberId) {
+                    const eventDocRef = tourRef.collection("events").doc(data.eventId).collection("distributions").doc(data.memberId);
+                    batch.delete(eventDocRef);
+                }
+            });
+
+            batch.delete(tourRef);
+            await batch.commit();
+            alert(`ツアー「${tourToDelete.tourName}」を完全に削除しました。`);
+            
+            await loadTours();
+            displayTourDetails(null);
+
+        } catch (error) {
+            console.error("Error deleting tour:", error);
+            alert('ツアーの削除中にエラーが発生しました。');
+        } finally {
+            deleteTourButton.disabled = false;
+            deleteTourButton.textContent = "このツアーを削除";
         }
     });
 
@@ -343,7 +383,8 @@ function initializeHistoryPage() {
         });
     });
     document.getElementById('reset-button').addEventListener('click', async () => {
-        if (prompt(`【${eventName}】の履歴をリセットします。パスワードを入力:`) !== RESET_PASS) { if (event.target.value !== null) alert("パスワードが違います。"); return; }
+        const inputPassword = prompt(`【${eventName}】の履歴をリセットします。パスワードを入力:`);
+        if (inputPassword !== RESET_PASS) { if (inputPassword !== null) alert("パスワードが違います。"); return; }
         if (!confirm("イベント履歴と全体の履歴の両方から削除されます。よろしいですか？")) return;
         const snap = await eventRef.get(); const batch = db.batch();
         snap.forEach(doc => { batch.delete(doc.ref); batch.delete(masterRef.doc(doc.id)); });
@@ -405,7 +446,8 @@ function initializeMasterHistoryPage() {
         });
     });
     document.getElementById('reset-master-button').addEventListener('click', async () => {
-        if (prompt("【警告】このツアーの全履歴が削除されます。パスワードを入力:") !== MASTER_PASS) { if (event.target.value !== null) alert("パスワードが違います。"); return; }
+        const inputPassword = prompt("【警告】このツアーの全履歴が削除されます。パスワードを入力:");
+        if (inputPassword !== MASTER_PASS) { if (inputPassword !== null) alert("パスワードが違います。"); return; }
         if (!confirm("ツアー全体の履歴と、関連するすべてのイベント履歴が削除されます。よろしいですか？")) return;
         const snap = await masterRef.get(); const batch = db.batch();
         snap.forEach(doc => {

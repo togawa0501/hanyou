@@ -234,7 +234,7 @@ function initializeAppConfig() {
         if (!tourToDelete) return;
 
         // ▼▼▼ ここからが修正箇所です ▼▼▼
-        const confirmation = prompt(`【警告】\n「${tourToDelete.tourName}」に関するすべてのデータ（設定、全配布履歴）が完全に削除されます。\n\nこの操作は元に戻せません。\n削除を実行するには、全削除パスワード「neuralizer」を入力してください：`);
+        const confirmation = prompt(`【警告】\n「${tourToDelete.tourName}」に関するすべてのデータ（設定、全配布履歴）が完全に削除されます。\n\nこの操作は元に戻せません。\n削除を実行するには、指定された全削除パスワードを入力してください：`);
 
         if (confirmation !== "neuralizer") {
             if (confirmation !== null) alert("パスワードが一致しません。削除はキャンセルされました。");

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配布履歴</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container history-container">
+        <div class="header">
+            <h2>配布履歴</h2>
+        </div>
+
+        <div class="actions">
+            <input type="text" id="search-input" placeholder="会員番号で検索..." style="margin-bottom: 0;">
+            <button id="csv-export-button">CSVで出力</button>
+            <div class="delete-area">
+                <input type="text" id="delete-member-id-input" placeholder="削除する会員番号">
+                <button id="delete-button">削除</button>
+            </div>
+            <button id="reset-button" class="danger-button">全履歴をリセット</button>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>配布日時</th>
+                        <th>会員番号</th>
+                        <th>担当スタッフ</th>
+                    </tr>
+                </thead>
+                <tbody id="history-table-body">
+                    <tr><td colspan="3">履歴を読み込み中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer-nav">
+            <a href="app.html">配布ページに戻る</a>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+    <script src="firebase-config.js"></script>
+    <script src="auth.js"></script>
+    <script src="history.js"></script>
+</body>
+</html>

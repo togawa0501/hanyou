@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ツアー全体 配布履歴</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container history-container">
+        <div class="header">
+            <h2>ツアー全体 配布履歴</h2>
+        </div>
+
+        <div class="actions">
+            <button id="csv-export-button">全履歴をCSVで出力</button>
+            <button id="reset-master-button" class="danger-button">ツアー全履歴をリセット</button>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>配布日時</th>
+                        <th>会員番号</th>
+                        <th>担当スタッフ</th>
+                        <th>配布イベント</th>
+                    </tr>
+                </thead>
+                <tbody id="history-table-body">
+                    <tr><td colspan="4">履歴を読み込み中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer-nav">
+            <a href="app.html">配布ページに戻る</a>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+    <script src="firebase-config.js"></script>
+    <script src="auth.js"></script>
+    <script src="master_history.js"></script>
+</body>
+</html>

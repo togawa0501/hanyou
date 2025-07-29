@@ -1,14 +1,21 @@
-auth.onAuthStateChanged((user) => {
-    if (user) {
-        initializeMasterHistoryPage();
-    } else {
-        window.location.href = 'index.html';
-    }
-});
+// ▼▼▼ この安全装置を追加 ▼▼▼
+const currentPage = window.location.pathname.split('/').pop();
+if (currentPage === 'master_history.html') {
+    // 認証状態の確定を待ってから、ページの処理を開始する
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            initializeMasterHistoryPage();
+        } else {
+            window.location.href = 'index.html';
+        }
+    });
+}
+// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
 function initializeMasterHistoryPage() {
     const tourId = localStorage.getItem('fanclub-tour-id');
     if (!tourId) {
+        // このエラーは、通常発生しないはずですが、念のため残しておきます。
         alert("ツアーが選択されていません。");
         window.location.href = 'index.html';
         return;
@@ -85,7 +92,7 @@ function initializeMasterHistoryPage() {
             return;
         }
         const csvData = convertToCSV(allHistoryData);
-        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+        const bom = new Uint8A-rray([0xEF, 0xBB, 0xBF]);
         const blob = new Blob([bom, csvData], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);

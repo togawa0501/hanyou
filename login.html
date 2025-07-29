@@ -53,14 +53,27 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
+        // ▼▼▼ ここからが修正箇所です ▼▼▼
         const params = new URLSearchParams(window.location.search);
         const tourId = params.get('tourId');
         
         if (!tourId) {
-            alert('ツアーが指定されていません。');
-            window.location.href = 'index.html';
+            // ループを防ぐため、ページの内容を書き換えて処理を停止する
+            document.body.innerHTML = `
+                <div class="container">
+                    <h1>エラー</h1>
+                    <p>ツアーが指定されていません。</p>
+                    <p style="margin-top: 20px;">お手数ですが、以下のリンクからTOPページに戻って、もう一度ツアーを選択してください。</p>
+                    <div class="footer-nav" style="margin-top: 30px; justify-content: center;">
+                        <a href="index.html">TOPページに戻る</a>
+                    </div>
+                </div>
+            `;
+            // これ以降のスクリプト実行を停止
+            throw new Error("Tour ID is missing. Halting execution.");
         }
         localStorage.setItem('fanclub-tour-id', tourId); // ツアーIDを保存
+        // ▲▲▲ 修正ここまで ▲▲▲
 
         const tourTitle = document.getElementById('tour-title');
         const eventSelect = document.getElementById('event-select');

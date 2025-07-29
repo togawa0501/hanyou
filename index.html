@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>特典配布システム</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .form-group { text-align: left; margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #ccc; font-size: 14px; }
+        select { width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #555; background-color: #333; color: #f0f0f0; font-size: 16px; }
+        .hidden { display: none; }
+        .settings-link { font-size: 14px; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>特典配布システム</h1>
+        <div id="error-message" class="alert-message error hidden"></div>
+
+        <div id="login-view">
+            <p>ログインしてください</p>
+            <div class="form-group">
+                <input type="email" id="email-input" placeholder="メールアドレス">
+            </div>
+            <div class="form-group">
+                <input type="password" id="password-input" placeholder="パスワード">
+            </div>
+            <button id="login-button">ログイン</button>
+        </div>
+
+        <div id="event-select-view" class="hidden">
+            <p><span id="user-email-display"></span>としてログイン中</p>
+            <div class="form-group">
+                <label for="event-select">イベントを選択</label>
+                <select id="event-select">
+                    <option>イベントを読み込み中...</option>
+                </select>
+            </div>
+            <button id="start-button">作業開始</button>
+            <div class="footer-nav" style="margin-top: 20px;">
+                <a href="#" id="logout-link" class="logout">ログアウト</a>
+                <a href="settings.html" id="settings-link" class="logout hidden">管理者設定</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    
+    <script src="firebase-config.js"></script>
+    <script src="settings.js"></script> <script>
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        const loginView = document.getElementById('login-view');
+        const eventSelectView = document.getElementById('event-select-view');
+        const eventSelect = document.getElementById('event-select');
+        const settingsLink = document.getElementById('settings-link');
+
+        async function populateEvents() {
+            eventSelect.innerHTML = '<option>イベントを読み込み中...</option>';
+            try {
+                const snapshot = await db.collection("events_config").orderBy("createdAt", "asc").get();
+                if (snapshot.empty) {
+                    eventSelect.innerHTML = '<option>イベントが登録されていません</option>';
+                    return;
+                }
+                eventSelect.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const event = doc.data();
+                    const option = document.createElement('option');
+                    option.value = event.eventId;
+                    option.textContent = event.eventName;
+                    eventSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Error fetching events:", error);
+                eventSelect.innerHTML = '<option>読み込みに失敗しました</option>';
+            }
+        }
+
+        function showEventSelectView(user) {
+            loginView.classList.add('hidden');
+            eventSelectView.classList.remove('hidden');
+            document.getElementById('user-email-display').textContent = user.email;
+            
+            if (adminEmails.includes(user.email)) {
+                settingsLink.classList.remove('hidden');
+            }
+            populateEvents();
+        }
+        
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                showEventSelectView(user);
+            } else {
+                loginView.classList.remove('hidden');
+                eventSelectView.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('login-button').addEventListener('click', () => {
+            const email = document.getElementById('email-input').value;
+            const password = document.getElementById('password-input').value;
+            auth.signInWithEmailAndPassword(email, password).catch(error => {
+                const el = document.getElementById('error-message');
+                el.textContent = 'メールアドレスまたはパスワードが違います。';
+                el.classList.remove('hidden');
+            });
+        });
+
+        document.getElementById('start-button').addEventListener('click', () => {
+            const eventId = eventSelect.value;
+            const eventName = eventSelect.options[eventSelect.selectedIndex].text;
+            if (eventId && !eventId.includes('...')) {
+                localStorage.setItem('fanclub-event-id', eventId);
+                localStorage.setItem('fanclub-event-name', eventName);
+                window.location.href = 'app.html';
+            } else {
+                alert('有効なイベントを選択してください。');
+            }
+        });
+        
+        document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); auth.signOut(); });
+    </script>
+</body>
+</html>

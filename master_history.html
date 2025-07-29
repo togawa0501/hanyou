@@ -1,49 +1,63 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ツアー全体 配布履歴</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div class="container history-container">
-        <div class="header">
-            <h2>ツアー全体 配布履歴</h2>
-        </div>
+auth.onAuthStateChanged((user) => {
+    if (user) initializeMasterHistoryPage();
+    else window.location.href = 'index.html';
+});
 
-        <div class="actions">
-            <button id="csv-export-button">全履歴をCSVで出力</button>
-            <button id="reset-master-button" class="danger-button">ツアー全履歴をリセット</button>
-        </div>
+function initializeMasterHistoryPage() {
+    const tourId = localStorage.getItem('fanclub-tour-id');
+    if (!tourId) {
+        alert("ツアーが選択されていません。");
+        window.location.href = 'index.html';
+        return;
+    }
 
-        <div class="table-wrapper">
-            <table>
-                <thead>
-                    <tr>
-                        <th>配布日時</th>
-                        <th>会員番号</th>
-                        <th>担当スタッフ</th>
-                        <th>配布イベント</th>
-                    </tr>
-                </thead>
-                <tbody id="history-table-body">
-                    <tr><td colspan="4">履歴を読み込み中...</td></tr>
-                </tbody>
-            </table>
-        </div>
+    const historyTableBody = document.getElementById('history-table-body');
+    const csvExportButton = document.getElementById('csv-export-button');
+    const resetMasterButton = document.getElementById('reset-master-button');
+    
+    // ▼▼▼ データ保存場所の変更 ▼▼▼
+    const tourRef = db.collection("tours").doc(tourId);
+    const masterCollectionRef = tourRef.collection("master_distributions");
+    // ▲▲▲
+    
+    const MASTER_RESET_PASSWORD = "password456"; 
+    let allHistoryData = [];
 
-        <div class="footer-nav">
-            <a href="app.html">配布ページに戻る</a>
-        </div>
-    </div>
+    masterCollectionRef.orderBy('distributedAt', 'desc').onSnapshot(snapshot => {
+        historyTableBody.innerHTML = '';
+        allHistoryData = [];
+        if (snapshot.empty) {
+            historyTableBody.innerHTML = `<tr><td colspan="4">まだ配布履歴がありません。</td></tr>`;
+            return;
+        }
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            allHistoryData.push(data);
+            const tr = document.createElement('tr');
+            const date = data.distributedAt.toDate().toLocaleString('ja-JP');
+            tr.innerHTML = `<td>${date}</td><td>${data.memberId}</td><td>${data.staffName}</td><td>${data.eventName || '不明'}</td>`;
+            historyTableBody.appendChild(tr);
+        });
+    }, error => console.error("Error fetching history:", error));
 
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    resetMasterButton.addEventListener('click', async () => {
+        if (prompt("【警告】このツアーの全履歴が削除されます。マスターパスワードを入力：") !== MASTER_RESET_PASSWORD) {
+            alert("マスターパスワードが違います。"); return;
+        }
+        if (confirm("ツアー全体の履歴と、関連するすべてのイベント履歴が削除されます。よろしいですか？")) {
+            const masterSnapshot = await masterCollectionRef.get();
+            const batch = db.batch();
+            masterSnapshot.forEach(doc => {
+                const data = doc.data();
+                batch.delete(doc.ref);
+                if (data.eventId && data.memberId) {
+                    batch.delete(tourRef.collection("events").doc(data.eventId).collection("distributions").doc(data.memberId));
+                }
+            });
+            await batch.commit();
+            alert("ツアー全体の全履歴と、関連するすべてのイベント履歴をリセットしました。");
+        }
+    });
 
-    <script src="firebase-config.js"></script>
-    <script src="auth.js"></script>
-    <script src="master_history.js"></script>
-</body>
-</html>
+    csvExportButton.addEventListener('click', () => { /* ... (省略) ... */ });
+}

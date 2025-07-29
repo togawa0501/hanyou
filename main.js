@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ------------------------------------------------------------------
 const auth = firebase.auth();
 const db = firebase.firestore();
-const adminEmails = ["admin@example.com", "your-email@example.com"]; // ★★★【最重要】管理者のメアドをここに設定 ★★★
+const adminEmails = ["chisano_togawa@dwango.co.jp", "8214tgwcsn@gmail.com"]; // ★★★【最重要】管理者のメアドをここに設定 ★★★
 
 
 // ------------------------------------------------------------------
@@ -42,7 +42,6 @@ const adminEmails = ["admin@example.com", "your-email@example.com"]; // ★★�
 // ------------------------------------------------------------------
 function initializePageIndex() {
     const tourListDiv = document.getElementById('tour-list');
-    const configLink = document.getElementById('config-link');
 
     async function loadTours() {
         tourListDiv.innerHTML = '<p>ツアーを読み込み中...</p>';
@@ -65,15 +64,6 @@ function initializePageIndex() {
             tourListDiv.innerHTML = '<p>ツアーの読み込みに失敗しました。</p>';
         }
     }
-
-    auth.onAuthStateChanged(user => {
-        if (user && adminEmails.includes(user.email)) {
-            configLink.classList.remove('hidden');
-        } else {
-            configLink.classList.add('hidden');
-        }
-    });
-
     loadTours();
 }
 
@@ -93,6 +83,7 @@ function initializeAppLogin() {
 
     const tourTitle = document.getElementById('tour-title');
     const eventSelect = document.getElementById('event-select');
+    const configLink = document.getElementById('config-link');
     
     async function loadTourInfo() {
         const tourDoc = await db.collection('tours').doc(tourId).get();
@@ -121,6 +112,13 @@ function initializeAppLogin() {
             loginView.classList.add('hidden');
             eventSelectView.classList.remove('hidden');
             document.getElementById('user-email-display').textContent = user.email;
+            
+            if (adminEmails.includes(user.email)) {
+                configLink.classList.remove('hidden');
+            } else {
+                configLink.classList.add('hidden');
+            }
+
         } else {
             loginView.classList.remove('hidden');
             eventSelectView.classList.add('hidden');
@@ -153,8 +151,12 @@ function initializeAppLogin() {
 // ------------------------------------------------------------------
 function initializeAppConfig() {
     auth.onAuthStateChanged((user) => {
-        if (!user || !adminEmails.includes(user.email)) {
-            alert("アクセス権限がありません。");
+        if (user) {
+            if (!adminEmails.includes(user.email)) {
+                alert("アクセス権限がありません。");
+                window.location.href = 'index.html';
+            }
+        } else {
             window.location.href = 'index.html';
         }
     });
@@ -341,7 +343,7 @@ function initializeHistoryPage() {
         });
     });
     document.getElementById('reset-button').addEventListener('click', async () => {
-        if (prompt(`【${eventName}】の履歴をリセットします。パスワードを入力:`) !== RESET_PASS) return alert("パスワードが違います。");
+        if (prompt(`【${eventName}】の履歴をリセットします。パスワードを入力:`) !== RESET_PASS) { if (event.target.value !== null) alert("パスワードが違います。"); return; }
         if (!confirm("イベント履歴と全体の履歴の両方から削除されます。よろしいですか？")) return;
         const snap = await eventRef.get(); const batch = db.batch();
         snap.forEach(doc => { batch.delete(doc.ref); batch.delete(masterRef.doc(doc.id)); });
@@ -353,6 +355,28 @@ function initializeHistoryPage() {
         if (!confirm(`${memberId}の履歴を両方から削除しますか？`)) return;
         const batch = db.batch(); batch.delete(eventRef.doc(memberId)); batch.delete(masterRef.doc(memberId));
         await batch.commit(); alert('削除しました。');
+    });
+    document.getElementById('search-input').addEventListener('input', e => {
+        const searchTerm = e.target.value.toLowerCase();
+        Array.from(tableBody.getElementsByTagName('tr')).forEach(row => {
+            const cell = row.cells[1];
+            if (cell) row.style.display = cell.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
+        });
+    });
+    document.getElementById('csv-export-button').addEventListener('click', () => {
+        if (historyData.length === 0) { alert('出力するデータがありません。'); return; }
+        const headers = "配布日時,会員番号,担当スタッフ";
+        const rows = historyData.map(row => `"${row.distributedAt.toDate().toLocaleString('ja-JP')}","${row.memberId}","${row.staffName}"`);
+        const csv = `${headers}\n${rows.join('\n')}`;
+        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+        const blob = new Blob([bom, csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        const now = new Date();
+        link.download = `dist_history_${eventId}_${now.toISOString().slice(0,10)}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     });
 }
 
@@ -381,7 +405,7 @@ function initializeMasterHistoryPage() {
         });
     });
     document.getElementById('reset-master-button').addEventListener('click', async () => {
-        if (prompt("【警告】このツアーの全履歴が削除されます。パスワードを入力:") !== MASTER_PASS) return alert("パスワードが違います。");
+        if (prompt("【警告】このツアーの全履歴が削除されます。パスワードを入力:") !== MASTER_PASS) { if (event.target.value !== null) alert("パスワードが違います。"); return; }
         if (!confirm("ツアー全体の履歴と、関連するすべてのイベント履歴が削除されます。よろしいですか？")) return;
         const snap = await masterRef.get(); const batch = db.batch();
         snap.forEach(doc => {
@@ -390,5 +414,20 @@ function initializeMasterHistoryPage() {
             if (data.eventId && data.memberId) batch.delete(tourRef.collection("events").doc(data.eventId).collection("distributions").doc(data.memberId));
         });
         await batch.commit(); alert("リセットしました。");
+    });
+    document.getElementById('csv-export-button').addEventListener('click', () => {
+        if (historyData.length === 0) { alert('出力するデータがありません。'); return; }
+        const headers = "配布日時,会員番号,担当スタッフ,配布イベント";
+        const rows = historyData.map(row => `"${row.distributedAt.toDate().toLocaleString('ja-JP')}","${row.memberId}","${row.staffName}","${row.eventName || ''}"`);
+        const csv = `${headers}\n${rows.join('\n')}`;
+        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+        const blob = new Blob([bom, csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        const now = new Date();
+        link.download = `master_dist_history_${now.toISOString().slice(0,10)}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     });
 }
